@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # pylint: disable=invalid-name
 """
-Module for extract password.s hash from freeipa entry and 
+Module for extract password.s hash from freeipa entry and
 comare hash with wordlist hashes.
 """
 
@@ -12,6 +12,7 @@ import hashlib
 import secrets
 import os
 import datetime
+import time
 import ldap
 import ldap.asyncsearch
 
@@ -35,17 +36,19 @@ class IPAPasswordChecker:
         ldap_filter_env = os.getenv('LDAP_FILTER')
         self.ldap_filter = ldap_filter_env if ldap_filter_env else ''
         ldap_passwords_file_env = os.getenv('LDAP_PASSWORDS_FILE')
-        self.ldap_passwords_file = ldap_passwords_file_env if ldap_passwords_file_env else 'wordlist'
+        self.ldap_passwords_file = \
+            ldap_passwords_file_env if ldap_passwords_file_env else 'wordlist'
 
         self.wordlist = []
-        
+
         logging.info("Loading file %s", self.ldap_passwords_file)
         try:
             with open(self.ldap_passwords_file, encoding='utf-8') as f:
                 self.wordlist = f.readlines()
         except FileNotFoundError:
             logging.warning(
-                "File %s does not exist. Fallback to one default password.", self.ldap_passwords_file)
+                "File %s does not exist. Fallback to one default password.",
+                self.ldap_passwords_file)
             self.wordlist = ['userpassword']
         except:  # pylint: disable=bare-except
             exit(1)
@@ -53,12 +56,13 @@ class IPAPasswordChecker:
         # pylint: disable=invalid-name
         self.ldap_obj = None
         # Check only account which password expired somethere in the future
-        date_expiration = datetime.datetime.now() # - datetime.timedelta(weeks=1)
+        date_expiration = datetime.datetime.now()  # - datetime.timedelta(weeks=1)
         password_expiration_border_date = date_expiration.strftime(
             "%Y%m%d%H%M%SZ")
-        self.user_filter = f"(&(!(nsaccountlock=TRUE))(krbPasswordExpiration>={password_expiration_border_date}))"
+        # pylint: disable=line-too-long
+        self.user_filter = f"(&(!(nsaccountlock=TRUE))(krbPasswordExpiration>={password_expiration_border_date}))"  # nopep8
         if self.ldap_filter:
-            self.user_filter = f"(&({self.ldap_filter})(!(nsaccountlock=TRUE)))"
+            self.user_filter = f"(&({self.ldap_filter})(!(nsaccountlock=TRUE)))"  # nopep8
 
         logging.info('Initialize freeipa password checker')
 
@@ -123,6 +127,7 @@ class IPAPasswordChecker:
         Check password for current user and return it
         """
         logging.info("Check passwords for user %s", username)
+        start_time = time.time()
         pw_type = ''
         decoded_hash = ''
         original_salt = None
@@ -160,12 +165,15 @@ class IPAPasswordChecker:
 
         for word in [username] + self.wordlist:
             if self.verify_password(word.strip(), pw_type, original_salt, decoded_hash):
-                logging.warning("User %s has password %s !",
-                                username, word.strip())
+                elapsed_time = time.time() - start_time
+                logging.warning("User %s has password %s ! Time: %f",
+                            username,  word.strip(), elapsed_time)
                 return {
                     'username': username,
                     'password': word.strip()
                 }
+        elapsed_time = time.time() - start_time
+        logging.info("Check passwords for user %s done, time %f", username, elapsed_time)
         return None
 
     def check_users(self):
@@ -225,7 +233,6 @@ class IPAPasswordChecker:
         except Exception as expt:  # pylint: disable=broad-exception-caught
             logging.error("Received exception %s", expt)
             return
-
 
 if __name__ == "__main__":
     checker = IPAPasswordChecker()
