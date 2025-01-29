@@ -1,5 +1,6 @@
 git config --global alias.co checkout
 git config --global alias.cm "commit -m"
+git config --global alias.cs "commit -S"
 git config --global alias.csm "commit -S -m"
 git config --global alias.st status
 git config --global alias.br branch
