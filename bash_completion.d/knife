@@ -1,0 +1,55 @@
+_knife()
+{
+  local current prev command
+  current=${COMP_WORDS[COMP_CWORD]}
+  prev=${COMP_WORDS[COMP_CWORD-1]}
+  pprev=${COMP_WORDS[COMP_CWORD-2]} 
+  command=${COMP_WORDS[1]}
+  subcommand=${COMP_WORDS[2]}
+
+  case $prev in
+    knife)
+      if [ ${#COMP_WORDS[@]} = 2 ]; then
+        COMPREPLY=($(echo -e "config client status vault node cookbook role environment block search bootstrap" | sed 's/ /\n/g' | grep -E "^$current"))
+      fi
+      return 0
+      ;;
+    client|node|role|cookbook|environment|vault)
+      if [ ${#COMP_WORDS[@]} = 3 ]; then
+        if [ "$command" = "cookbook" ]; then
+          COMPREPLY=($(echo -e "edit show list download upload" | sed 's/ /\n/g' | grep -E "^$current"))
+        elif [ "$command" = "vault" ]; then
+          COMPREPLY=($(echo -e "create update list edit delete show" | sed 's/ /\n/g' | grep -E "^$current"))
+        else 
+          COMPREPLY=($(echo -e "edit show list" | sed 's/ /\n/g' | grep -E "^$current"))
+        fi
+      fi
+      return 0
+      ;;
+    block)
+      if [ ${#COMP_WORDS[@]} = 3 ]; then
+        COMPREPLY=($(knife block list 2>>/dev/null | grep -E "\*" | sed 's/\*//g' | awk '{print $1}' | grep -E "^$current"))
+      fi
+      return 0
+      ;;
+    config)
+      if [ ${#COMP_WORDS[@]} = 3 ]; then
+        COMPREPLY=($(echo -e "get get-profile list-profiles use-profile" | sed 's/ /\n/g' | grep -E "^$current"))
+      fi
+      return 0
+      ;;
+    edit|show)
+      if [ "$command" = "node" ]; then
+        COMPREPLY=($(knife node list 2>>/dev/null | grep -E "^$current"))
+      elif [ "$command" = "cookbook" ]; then
+        COMPREPLY=($(knife cookbook list 2>>/dev/null | awk '{print $1}' | grep -E "^$current"))
+      elif [ "$command" = "environment" ]; then
+        COMPREPLY=($(knife environment list 2>>/dev/null | grep -E "^$current"))
+      elif [ "$command" = "role" ]; then
+        COMPREPLY=($(knife role list 2>>/dev/null | grep -E "^$current"))
+      fi
+      return 0
+      ;;
+  esac
+}
+complete -F _knife knife	

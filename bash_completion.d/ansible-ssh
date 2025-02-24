@@ -1,0 +1,67 @@
+_ansible-ssh()
+{
+  for program in ansible-config ansible-inventory jq; do
+    type "${program}" > /dev/null || { echo "ERROR: not found: ${program}"; return 0; }
+  done
+
+  local current prev command
+  current=${COMP_WORDS[COMP_CWORD]}
+  prev=${COMP_WORDS[COMP_CWORD-1]}
+  pprev=${COMP_WORDS[COMP_CWORD-2]} 
+  command=${COMP_WORDS[1]}
+  subcommand=${COMP_WORDS[2]}
+  # echo
+  # echo '-----'
+  # echo "current ${current}"
+  # echo "prev ${prev}"
+  # echo "pprev ${pprev}"
+  # echo "command ${command}"
+  # echo "subcommand ${subcommand}"
+  # echo "COMP_WORDS ${#COMP_WORDS[@]}"
+  # echo '-----'
+  # echo
+  case ${prev} in
+    ansible-ssh)
+      # Inventory file wasn.t specified.
+      if [ ${#COMP_WORDS[@]} = 2 ]; then
+        COMPREPLY=($(ansible-inventory --list 2>/dev/null | jq --raw-output '.[] | .hosts? | .[]? ' | sort | uniq | grep -E "^${current}"))
+        return 0
+      fi
+      ;;
+    *)
+      case ${command} in
+        -i)
+          case ${#COMP_WORDS[@]} in
+            # Inventory file was specified.
+            3|4)
+              if [ ! -z ${prev} ]; then
+                COMPREPLY=($(ansible-inventory -i ${subcommand} --list 2>/dev/null | jq --raw-output '.[] | .hosts? | .[]? ' | sort | uniq | grep -E "^${current}"))
+                return 0
+              fi
+            ;;
+            5|6) 
+              # Spec inventory and vault 
+              if [ ! -z ${prev} ]; then
+                COMPREPLY=($(ansible-inventory -i ${subcommand} --vault-password-file ${prev} --list 2>/dev/null | jq --raw-output '.[] | .hosts? | .[]? ' | sort | uniq | grep -E "^${current}"))
+                return 0
+              fi
+            ;;
+          esac
+          ;;
+        -v)
+          case ${#COMP_WORDS[@]} in
+            # Inventory file was specified.
+            5|6) 
+              # Spec vault and inventory 
+              if [ ! -z ${prev} ]; then
+                COMPREPLY=($(ansible-inventory -i ${prev} --vault-password-file ${subcommand} --list 2>/dev/null | jq --raw-output '.[] | .hosts? | .[]? ' | sort | uniq | grep -E "^$current"))
+                return 0
+              fi
+            ;;
+          esac
+          ;;
+      esac
+      ;;
+  esac
+}
+complete -F _ansible-ssh ansible-ssh
